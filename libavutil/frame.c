@@ -40,9 +40,9 @@ AVFrame *av_frame_alloc(Resolution *res, SAMPLE sample,
     unsigned sampled_plane_width = 0;
     unsigned sampled_plane_height = 0;
 
-    if (sample == H_SAMPLING)
+    if (sample == YUV422P)
       sampled_plane_width = res->width / 2;
-    else if (sample == H_V_SAMPLING) {
+    else if (sample == YUV420P) {
 
       sampled_plane_width = res->width / 2;
       sampled_plane_height = res->height / 2;

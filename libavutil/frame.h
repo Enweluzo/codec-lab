@@ -19,10 +19,13 @@ typedef struct {
   int row_stride[AV_NUM_DATA_POINTERS]; // Size of byte for each row
 
   FrameFormat format;
+
+  int color_standard; // Defines the color standard for YUV conversion, e.g.
+                      // BT.601, BT.709, or BT.2020.
 } AVFrame;
 
 extern AVFrame *av_frame_alloc(Resolution *res, SAMPLE sample,
-                               const unsigned plane_count);
+                               const FrameFormat format);
 extern void av_frame_free(AVFrame *av_frame);
 
 #endif
