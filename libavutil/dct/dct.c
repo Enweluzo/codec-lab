@@ -1,5 +1,6 @@
 #include "dct.h"
 #include "libavutil/dct/pattern.h"
+#include "libavutil/log.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,10 @@ int16_t *dct_8(uint8_t *_block) {
   level_shift_64(_block, block, -128);
 
   int16_t *coefficient = malloc(sizeof(int16_t[64]));
+  if (coefficient == NULL) {
+    log_oom();
+    exit(EXIT_FAILURE);
+  }
 
   const unsigned row_stride = 8;
 

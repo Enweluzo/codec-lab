@@ -54,9 +54,8 @@ void rgb2yuv_test() {
 
   if (test_passed) {
     printf(CSI_COLOR_GREEN "SUCCESS" CSI_COLOR_RESET
-                           ": RGB -> YUV conversion test test\n");
+                           ": RGB -> YUV conversion\n");
   } else {
-    printf(CSI_COLOR_RED "FAILED" CSI_COLOR_RESET
-                         ": RGB -> YUV conversion test failed\n");
+    printf(CSI_COLOR_RED "FAILED" CSI_COLOR_RESET ": RGB -> YUV conversion\n");
   }
 }

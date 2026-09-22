@@ -47,10 +47,9 @@ void bitmap_test() {
     }
   }
   if (test_passed) {
-    printf(CSI_COLOR_GREEN "SUCCESS" CSI_COLOR_RESET ":Bitmap Parsing test\n");
+    printf(CSI_COLOR_GREEN "SUCCESS" CSI_COLOR_RESET ": Bitmap Parsing\n");
   } else {
-    printf(CSI_COLOR_RED "FAILED" CSI_COLOR_RESET
-                         ": Bitmap Parsing test failed\n");
+    printf(CSI_COLOR_RED "FAILED" CSI_COLOR_RESET ": Bitmap Parsing\n");
   }
 
   fclose(src_file);
