@@ -2,17 +2,30 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-Arena *create_arena(size_t buf_size) {
+Arena *create_arena(size_t capacity) {
   Arena *arena = malloc(sizeof(Arena));
-  arena->buffer = malloc(buf_size);
-  arena->capacity = buf_size;
+  if (arena == NULL) {
+    return NULL;
+  }
+  arena->buffer = malloc(capacity);
+  if (arena->buffer == NULL) {
+    return NULL;
+  }
+  arena->capacity = capacity;
   arena->offset = 0;
   return arena;
 }
 
 void *arena_alloc(Arena *arena, size_t size) {
   if (arena->offset + size > arena->capacity) {
-    return NULL; // Out of memory
+    // Increase the capacity
+    size_t new_capacity = arena->offset + size;
+    arena->buffer = realloc(arena->buffer, new_capacity);
+    if (arena->buffer == NULL) {
+      return NULL;
+    }
+
+    arena->capacity = new_capacity;
   }
 
   void *ptr = &arena->buffer[arena->offset];
