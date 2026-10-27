@@ -51,7 +51,19 @@ typedef struct TreeSlot {
   };
 } TreeSlot;
 
+// Returns the value stored in the slot's node or leaf.
+extern void *tree_slot_value(TreeSlot *slot);
+
+typedef struct {
+  uint8_t *steps;
+  int length;
+} Path;
+
 extern TreeSlot *tree_find_leaf(TreeSlot *root, uint32_t index);
 extern void tree_insert_leaf(TreeSlot *root, TreeSlot *leaf, Arena *arena);
+
+// Returns the root-to-leaf path for the given index (0 = left, 1 = right).
+extern Path *find_path(uint32_t index, TreeSlot *root);
+extern void free_path(Path *path);
 
 #endif

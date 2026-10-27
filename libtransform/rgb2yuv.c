@@ -45,6 +45,9 @@ coeff_row get_coefficients(int color_standard) {
 
 AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
                  SAMPLE sample, char range) {
+  if (rgb_frame->format == AV_PIX_FMT_YUV) {
+    return rgb_frame;
+  }
   bool legal_range = range == LegalRange;
 
   coeff_row coeff = get_coefficients(color_standard);
