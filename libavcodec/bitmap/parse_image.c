@@ -8,7 +8,6 @@
 #include "libavutil/cpu/endian.h"
 #include "libavutil/frame.h"
 #include "libavutil/log.h"
-#include "libavutil/sampling.h"
 #include "libavutil/terminal.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -87,7 +86,7 @@ AVFrame *read_bitmap_frame(BitmapHeader *bitmap, FILE *file) {
     break;
   }
 
-  AVFrame *frame = av_frame_alloc(&bitmap->res, NO_SAMPLING, format);
+  AVFrame *frame = av_frame_alloc(&bitmap->res, format, 1);
 
   for (int y = 0; y < bitmap->res.height; y++) {
     /*

@@ -56,7 +56,7 @@ After downloading `test_data.tar.gz`, extract it into the project root directory
 tar -xzf test_data.tar.gz -C ./
 rm test_data.tar.gz
 shopt -s globstar
-gcc **/*.c -lm -I. -g -DRUN_TEST -o main_test
+gcc **/*.c -lm -I. -g -DRUN_TEST -masm=intel -o main_test
 ```
 
 ## License

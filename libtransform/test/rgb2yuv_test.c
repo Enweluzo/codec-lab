@@ -1,12 +1,10 @@
 #include "libavutil/common.h"
 #include "libavutil/frame.h"
-#include "libavutil/sampling.h"
 #include "libavutil/terminal.h"
 #include "libtransform/rgb2yuv.h"
-#include "test/color_samples.h"
+#include "libtransform/test/rgb2yuv.h"
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 
 /*
  * Test RGB-to-YUV conversion using a predefined 21x20 RGB frame.
@@ -21,19 +19,20 @@
 
 void rgb2yuv_test() {
   Resolution res = {.width = 21, .height = 20};
-  const int rgb_plane_count = 3;
-  const int yuv_plane_count = 3;
-  AVFrame *rgb_frame = av_frame_alloc(&res, NO_SAMPLING, AV_PIX_FMT_RGB);
+  AVFrame rgb_frame = {.plane_count = 3,
+                       .res = &res,
+                       .byte_per_component = 1,
+                       .row_stride = {[0 ... 2] = 21},
+                       .format = AV_PIX_FMT_RGB};
 
-  for (int i = 0; i < rgb_plane_count; i++) {
-    memcpy(rgb_frame->data[i], &rgb_frame_data[i], 21 * 20);
-  }
-
-  AVFrame *yuv_frame = rgb2yuv(rgb_frame, &res, BT601, NO_SAMPLING, FullRange);
+  rgb_frame.data[0] = &rgb_frame_data[0][0];
+  rgb_frame.data[1] = &rgb_frame_data[1][0];
+  rgb_frame.data[2] = &rgb_frame_data[2][0];
+  AVFrame *yuv_frame = rgb2yuv(&rgb_frame, AV_PIX_FMT_YUV, BT601, FullRange);
 
   bool test_passed = true;
 
-  for (int i = 0; i < yuv_plane_count; i++) {
+  for (int i = 0; i < 3; ++i) {
     for (int _i = 0; _i < 21 * 20; _i++) {
       uint8_t src = yuv_frame_data[i][_i];
       uint8_t gen = yuv_frame->data[i][_i];
@@ -49,7 +48,6 @@ void rgb2yuv_test() {
     }
   }
 
-  av_frame_free(rgb_frame);
   av_frame_free(yuv_frame);
 
   if (test_passed) {

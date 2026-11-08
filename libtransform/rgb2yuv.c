@@ -1,7 +1,6 @@
 #include "libtransform/rgb2yuv.h"
 #include "libavutil/common.h"
 #include "libavutil/frame.h"
-#include "libavutil/sampling.h"
 #include <math.h>
 #include <stdint.h>
 
@@ -29,7 +28,7 @@ typedef const int (*coeff_row)[5];
  *     Uscaled = Ku * (B - (Yscaled / 65536)) + (127.5 * 65536)
  *     Vscaled = Kv * (R - (Yscaled / 65536)) + (127.5 * 65536)
  *
- * The resulting YCbCr values are in the full 8-bit range.
+ * The rgb_frame->resulting YCbCr values are in the full 8-bit range.
  */
 const uint64_t chroma_level_shift_q16 = 8355840;
 
@@ -43,9 +42,11 @@ coeff_row get_coefficients(int color_standard) {
   return &rgb2yuv_coeffs[color_standard];
 }
 
-AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
-                 SAMPLE sample, char range) {
-  if (rgb_frame->format == AV_PIX_FMT_YUV) {
+AVFrame *rgb2yuv(AVFrame *rgb_frame, FrameFormat yuv_format, int color_standard,
+                 char range) {
+  if (rgb_frame->format == AV_PIX_FMT_YUV ||
+      rgb_frame->format == AV_PIX_FMT_YUV422P ||
+      rgb_frame->format == AV_PIX_FMT_YUV420P) {
     return rgb_frame;
   }
   bool legal_range = range == LegalRange;
@@ -58,7 +59,7 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
   unsigned Kv = (*coeff)[4];
 
   unsigned yuv_plane_count = 3;
-  AVFrame *yuv_frame = av_frame_alloc(res, sample, AV_PIX_FMT_YUV);
+  AVFrame *yuv_frame = av_frame_alloc(rgb_frame->res, AV_PIX_FMT_YUV, 1);
 
   /*
    * Process pixels in 2x2 blocks and average their chroma samples
@@ -72,9 +73,9 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
    * The exact sampling pattern depends on the selected chroma
    * subsampling mode (e.g. 4:2:0, 4:2:2).
    */
-  for (int y = 0; y < res->height; y += 2) {
+  for (int y = 0; y < rgb_frame->res->height; y += 2) {
 
-    for (int x = 0; x < res->width; x += 2) {
+    for (int x = 0; x < rgb_frame->res->width; x += 2) {
       uint8_t y_block[2][2] = {{0}};
       uint8_t u_block[2][2] = {{0}};
       uint8_t v_block[2][2] = {{0}};
@@ -83,10 +84,10 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
 
         unsigned rgb_frame_row_offset =
             (y + block_y) * rgb_frame->row_stride[0];
-        bool pass_y_limit = (y + block_y) >= res->height;
+        bool pass_y_limit = (y + block_y) >= rgb_frame->res->height;
 
         for (int block_x = 0; block_x < 2; block_x++) {
-          bool pass_x_limit = (x + block_x) >= res->width;
+          bool pass_x_limit = (x + block_x) >= rgb_frame->res->width;
 
           if (pass_x_limit) {
             // Forward Fill the value
@@ -137,15 +138,17 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
         unsigned plane_row_stride = yuv_frame->row_stride[i];
 
         bool is_y_plane = i == 0;
+        bool sampling = yuv_format == AV_PIX_FMT_YUV420P ||
+                        yuv_format == AV_PIX_FMT_YUV422P;
 
-        if (sample == NO_SAMPLING || is_y_plane) {
+        if (!sampling || is_y_plane) {
           for (int block_y = 0; block_y < 2; block_y++) {
-            bool pass_y_limit = (y + block_y) >= res->height;
+            bool pass_y_limit = (y + block_y) >= rgb_frame->res->height;
             if (pass_y_limit)
               break;
 
             for (int block_x = 0; block_x < 2; block_x++) {
-              bool pass_x_limit = (x + block_x) >= res->width;
+              bool pass_x_limit = (x + block_x) >= rgb_frame->res->width;
               if (pass_x_limit)
                 break;
 
@@ -153,9 +156,9 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
               plane_data[row_offset + x + block_x] = (*block)[block_y][block_x];
             }
           }
-        } else if (sample == YUV422P) {
+        } else if (yuv_format == AV_PIX_FMT_YUV422P) {
           for (int block_y = 0; block_y < 2; block_y++) {
-            bool pass_y_limit = (y + block_y) >= res->height;
+            bool pass_y_limit = (y + block_y) >= rgb_frame->res->height;
             if (pass_y_limit)
               break;
 
@@ -165,7 +168,7 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, Resolution *res, int color_standard,
             unsigned row_offset = plane_row_stride * (y + block_y);
             plane_data[row_offset + (x / 2)] = average;
           }
-        } else if (sample == YUV420P) {
+        } else if (yuv_format == AV_PIX_FMT_YUV420P) {
           unsigned sum =
               (*block)[0][0] + (*block)[0][1] + (*block)[1][0] + (*block)[1][1];
           uint8_t average = round(sum / 4.0);
