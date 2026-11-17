@@ -1,14 +1,13 @@
 #include "libavutil/frame.h"
 #include "libavutil/common.h"
 #include "libavutil/log.h"
-#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-AVFrame *av_frame_alloc(Resolution *res, const FrameFormat format,
-                        uint8_t byte_per_component) {
+AVFrame *av_frame_alloc(unsigned width, unsigned height,
+                        const FrameFormat format, uint8_t byte_per_component) {
   unsigned plane_count = 0;
   switch (format) {
   case AV_PIX_FMT_RGB:
@@ -23,14 +22,23 @@ AVFrame *av_frame_alloc(Resolution *res, const FrameFormat format,
     break;
   }
 
-  unsigned frame_size = res->width * res->height; // unsampled
+  unsigned width_padding = (64 - width % 64) % 64;
+  unsigned height_padding = (64 - height % 64) % 64;
+
   AVFrame *frame = malloc(sizeof(AVFrame));
+  frame->res.width = width + width_padding;
+  frame->res.height = height + height_padding;
   frame->format = format;
   frame->byte_per_component = byte_per_component;
+  frame->crop_right = width_padding;
+  frame->crop_bottom = height_padding;
+  frame->crop_left = 0;
+  frame->crop_top = 0;
 
   bool sampling = format == AV_PIX_FMT_YUV420P || format == AV_PIX_FMT_YUV422P;
 
   if (!sampling) {
+    unsigned frame_size = frame->res.width * frame->res.height;
     uint8_t *buffer = malloc(plane_count * frame_size * byte_per_component);
 
     if (buffer == NULL) {
@@ -39,22 +47,28 @@ AVFrame *av_frame_alloc(Resolution *res, const FrameFormat format,
     }
 
     for (int plane = 0; plane < plane_count; plane++) {
-      frame->row_stride[plane] = res->width * byte_per_component;
+      frame->row_stride[plane] = frame->res.width * byte_per_component;
       frame->data[plane] = buffer + (plane * frame_size * byte_per_component);
     }
   } else {
-    unsigned sampled_plane_width = 0;
-    unsigned sampled_plane_height = 0;
+    unsigned sampled_width = 0;
+    unsigned sampled_height = 0;
 
-    if (format == AV_PIX_FMT_YUV422P)
-      sampled_plane_width = ceil(res->width / 2.0);
-    else if (format == AV_PIX_FMT_YUV420P) {
+    if (format == AV_PIX_FMT_YUV422P) {
+      sampled_width = width / 2;
+      sampled_height = height;
+    } else if (format == AV_PIX_FMT_YUV420P) {
 
-      sampled_plane_width = ceil(res->width / 2.0);
-      sampled_plane_height = ceil(res->height / 2.0);
+      sampled_width = width / 2;
+      sampled_height = height / 2;
     }
+    unsigned sampled_padding_width = (64 + sampled_width % 64) % 64;
+    unsigned sampled_padding_height = (64 + sampled_height % 64) % 64;
+    sampled_width = sampled_width + sampled_padding_width;
+    sampled_height = sampled_height + sampled_padding_height;
 
-    unsigned sampled_frame_size = sampled_plane_width * sampled_plane_height;
+    unsigned frame_size = frame->res.width * frame->res.height;
+    unsigned sampled_frame_size = sampled_width * sampled_height;
     unsigned sampled_plane_count = plane_count - 1;
     unsigned sampled_buffer_size = sampled_frame_size * sampled_plane_count;
     unsigned buffer_size =
@@ -67,7 +81,8 @@ AVFrame *av_frame_alloc(Resolution *res, const FrameFormat format,
     }
 
     frame->row_stride[0] =
-        res->width * byte_per_component; // The first plane always full sampled
+        frame->res.width *
+        byte_per_component; // The first plane always full sampled
     frame->data[0] = buffer;
 
     uint8_t *sampled_buffer = buffer + frame_size;
@@ -76,22 +91,17 @@ AVFrame *av_frame_alloc(Resolution *res, const FrameFormat format,
 
       unsigned sampled_plane_index = sampled_plane + 1;
 
-      frame->row_stride[sampled_buffer_size] =
-          sampled_plane_width * byte_per_component;
+      frame->row_stride[sampled_plane_index] =
+          sampled_width * byte_per_component;
       frame->data[sampled_plane_index] =
           sampled_buffer + (sampled_plane * sampled_frame_size);
     }
   }
 
-  Resolution *_res = res;
-  res = malloc(sizeof(Resolution));
-  memcpy(res, _res, sizeof(Resolution));
-  frame->res = res;
   return frame;
 }
 
 void av_frame_free(AVFrame *av_frame) {
   free(av_frame->data[0]);
-  free(av_frame->res);
   free(av_frame);
 }

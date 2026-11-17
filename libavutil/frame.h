@@ -23,7 +23,17 @@ typedef struct {
 
   FrameFormat format;
 
-  Resolution *res;
+  Resolution res;
+
+  /**
+   * The number of pixels to discard from the
+   * top/bottom/left/right border of the frame to obtain the sub-rectangle of
+   * the frame intended for presentation.
+   */
+  size_t crop_top;
+  size_t crop_bottom;
+  size_t crop_left;
+  size_t crop_right;
 
   uint8_t
       byte_per_component; // Number of bytes used to store each pixel components
@@ -35,7 +45,8 @@ typedef struct {
                       // BT.601, BT.709, or BT.2020.
 } AVFrame;
 
-extern AVFrame *av_frame_alloc(Resolution *res, const FrameFormat format,
+extern AVFrame *av_frame_alloc(unsigned width, unsigned height,
+                               const FrameFormat format,
                                uint8_t byte_per_component);
 extern void av_frame_free(AVFrame *av_frame);
 

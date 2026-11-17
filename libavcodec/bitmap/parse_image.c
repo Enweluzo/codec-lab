@@ -40,11 +40,6 @@ BitmapHeader *read_bitmap_header(FILE *file) {
     exit(EXIT_FAILURE);
   }
 
-  Resolution resolution = {
-      .width = little_to_host_u32(header + 18),
-      .height = little_to_host_u32(header + 22),
-  };
-
   unsigned pixel_data_offset = little_to_host_u32(header + 10);
   unsigned bits_per_pixel = little_to_host_u16(header + 28);
 
@@ -58,7 +53,8 @@ BitmapHeader *read_bitmap_header(FILE *file) {
 
   BitmapHeader *bitmap = malloc(sizeof(BitmapHeader));
 
-  bitmap->res = resolution;
+  bitmap->width = little_to_host_u32(header + 18);
+  bitmap->height = little_to_host_u32(header + 22);
   bitmap->header_len = pixel_data_offset;
   bitmap->pixel_bytes = bits_per_pixel / 8;
 
@@ -66,7 +62,7 @@ BitmapHeader *read_bitmap_header(FILE *file) {
 }
 
 AVFrame *read_bitmap_frame(BitmapHeader *bitmap, FILE *file) {
-  const unsigned row_pixel_bytes = bitmap->res.width * bitmap->pixel_bytes;
+  const unsigned row_pixel_bytes = bitmap->width * bitmap->pixel_bytes;
   const unsigned row_padding = (4 - (row_pixel_bytes % 4)) % 4;
   const unsigned bmp_row_stride = row_pixel_bytes + row_padding;
 
@@ -86,14 +82,14 @@ AVFrame *read_bitmap_frame(BitmapHeader *bitmap, FILE *file) {
     break;
   }
 
-  AVFrame *frame = av_frame_alloc(&bitmap->res, format, 1);
+  AVFrame *frame = av_frame_alloc(bitmap->width, bitmap->height, format, 1);
 
-  for (int y = 0; y < bitmap->res.height; y++) {
+  for (int y = 0; y < bitmap->height; y++) {
     /*
      * BMP stores rows bottom-to-top, so convert the
      * frame's top-to-bottom y coordinate to a BMP row.
      */
-    unsigned bmp_row = (bitmap->res.height - 1) - y;
+    unsigned bmp_row = (bitmap->height - 1) - y;
     unsigned bmp_row_offset = bmp_row * bmp_row_stride;
     unsigned file_offset = bitmap->header_len + bmp_row_offset;
 
@@ -110,7 +106,7 @@ AVFrame *read_bitmap_frame(BitmapHeader *bitmap, FILE *file) {
        */
       unsigned bmp_channel = (bitmap->pixel_bytes - 1) - channel;
 
-      for (int x = 0; x < bitmap->res.width; x++) {
+      for (int x = 0; x < bitmap->width; x++) {
 
         unsigned pixel_offset = x * bitmap->pixel_bytes;
         frame->data[channel][frame_row_offset + x] =

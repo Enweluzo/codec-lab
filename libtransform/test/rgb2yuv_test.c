@@ -1,4 +1,3 @@
-#include "libavutil/common.h"
 #include "libavutil/frame.h"
 #include "libavutil/terminal.h"
 #include "libtransform/rgb2yuv.h"
@@ -18,12 +17,17 @@
  */
 
 void rgb2yuv_test() {
-  Resolution res = {.width = 21, .height = 20};
+  const unsigned width = 21;
+  const unsigned height = 20;
   AVFrame rgb_frame = {.plane_count = 3,
-                       .res = &res,
+                       .res = {.width = width, .height = height},
                        .byte_per_component = 1,
-                       .row_stride = {[0 ... 2] = 21},
-                       .format = AV_PIX_FMT_RGB};
+                       .row_stride = {[0 ... 2] = width},
+                       .format = AV_PIX_FMT_RGB,
+                       .crop_bottom = 0,
+                       .crop_top = 0,
+                       .crop_left = 0,
+                       .crop_right = 0};
 
   rgb_frame.data[0] = &rgb_frame_data[0][0];
   rgb_frame.data[1] = &rgb_frame_data[1][0];
@@ -32,21 +36,25 @@ void rgb2yuv_test() {
 
   bool test_passed = true;
 
-  for (int i = 0; i < 3; ++i) {
-    for (int _i = 0; _i < 21 * 20; _i++) {
-      uint8_t src = yuv_frame_data[i][_i];
-      uint8_t gen = yuv_frame->data[i][_i];
-      int error = gen - src;
-      bool _pass = (error == 0) || (error == -1) || (error == 1);
-      if (!_pass) {
-        test_passed = false;
-        break;
+  for (int plane = 0; plane < 3; ++plane) {
+    for (int x = 0; x < width; x++) {
+      for (int y = 0; y < height; y++) {
+        int gen_row_offset = width * y;
+        int row_offset = yuv_frame->row_stride[plane] * y;
+        int gen_offset = gen_row_offset + x;
+        int offset = row_offset + x;
+
+        int dif =
+            yuv_frame_data[plane][gen_offset] - yuv_frame->data[plane][offset];
+        test_passed = (dif == 0) || (dif == -1) || (dif == 1);
+        if (!test_passed) {
+          goto exit_check;
+        }
       }
     }
-    if (!test_passed) {
-      break;
-    }
   }
+
+exit_check:
 
   av_frame_free(yuv_frame);
 

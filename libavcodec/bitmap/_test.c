@@ -17,9 +17,8 @@ void bitmap_test() {
   FILE *gen_file = fopen(BITMAP_TEST_GEN_F, "wb+");
 
   BitmapHeader *bitmap = read_bitmap_header(src_file);
-  write_bitmap_header(bitmap, gen_file);
-
   AVFrame *frame = read_bitmap_frame(bitmap, src_file);
+  write_bitmap_header(bitmap, frame, gen_file);
   write_bitmap_frame(bitmap, frame, gen_file);
 
   free(bitmap);

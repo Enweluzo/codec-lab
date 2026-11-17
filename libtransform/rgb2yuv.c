@@ -59,7 +59,8 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, FrameFormat yuv_format, int color_standard,
   unsigned Kv = (*coeff)[4];
 
   unsigned yuv_plane_count = 3;
-  AVFrame *yuv_frame = av_frame_alloc(rgb_frame->res, AV_PIX_FMT_YUV, 1);
+  AVFrame *yuv_frame = av_frame_alloc(rgb_frame->res.width,
+                                      rgb_frame->res.height, AV_PIX_FMT_YUV, 1);
 
   /*
    * Process pixels in 2x2 blocks and average their chroma samples
@@ -73,9 +74,9 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, FrameFormat yuv_format, int color_standard,
    * The exact sampling pattern depends on the selected chroma
    * subsampling mode (e.g. 4:2:0, 4:2:2).
    */
-  for (int y = 0; y < rgb_frame->res->height; y += 2) {
+  for (int y = 0; y < rgb_frame->res.height; y += 2) {
 
-    for (int x = 0; x < rgb_frame->res->width; x += 2) {
+    for (int x = 0; x < rgb_frame->res.width; x += 2) {
       uint8_t y_block[2][2] = {{0}};
       uint8_t u_block[2][2] = {{0}};
       uint8_t v_block[2][2] = {{0}};
@@ -84,10 +85,10 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, FrameFormat yuv_format, int color_standard,
 
         unsigned rgb_frame_row_offset =
             (y + block_y) * rgb_frame->row_stride[0];
-        bool pass_y_limit = (y + block_y) >= rgb_frame->res->height;
+        bool pass_y_limit = (y + block_y) >= rgb_frame->res.height;
 
         for (int block_x = 0; block_x < 2; block_x++) {
-          bool pass_x_limit = (x + block_x) >= rgb_frame->res->width;
+          bool pass_x_limit = (x + block_x) >= rgb_frame->res.width;
 
           if (pass_x_limit) {
             // Forward Fill the value
@@ -143,12 +144,12 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, FrameFormat yuv_format, int color_standard,
 
         if (!sampling || is_y_plane) {
           for (int block_y = 0; block_y < 2; block_y++) {
-            bool pass_y_limit = (y + block_y) >= rgb_frame->res->height;
+            bool pass_y_limit = (y + block_y) >= rgb_frame->res.height;
             if (pass_y_limit)
               break;
 
             for (int block_x = 0; block_x < 2; block_x++) {
-              bool pass_x_limit = (x + block_x) >= rgb_frame->res->width;
+              bool pass_x_limit = (x + block_x) >= rgb_frame->res.width;
               if (pass_x_limit)
                 break;
 
@@ -158,7 +159,7 @@ AVFrame *rgb2yuv(AVFrame *rgb_frame, FrameFormat yuv_format, int color_standard,
           }
         } else if (yuv_format == AV_PIX_FMT_YUV422P) {
           for (int block_y = 0; block_y < 2; block_y++) {
-            bool pass_y_limit = (y + block_y) >= rgb_frame->res->height;
+            bool pass_y_limit = (y + block_y) >= rgb_frame->res.height;
             if (pass_y_limit)
               break;
 
